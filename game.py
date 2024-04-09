@@ -6,20 +6,22 @@ import itertools
 
 # pygame setup
 pygame.init()
-screen = pygame.display.set_mode((1280, 1280))
+screen = pygame.display.set_mode((1280, 800))
 clock = pygame.time.Clock()
 running = True
 
 sim = simulation.get_test_sim()
 
 class Camera():
-    def __init__(self, position_vector, focus_vector):
+    def __init__(self, position_vector, focus_vector, screen_size):
         self.position = position_vector
         self.relative_position = position_vector
         self.focus = focus_vector
         self.fov = 90
         self.max_render_distance = 1000000000
         self.initial_position = self.position.copy()
+        self.screen_size = screen_size
+        self.screen_border = max(screen_size)/2
 
     def move_camera(self, delta_vector):
         self.relative_position = self.relative_position + delta_vector
@@ -37,6 +39,52 @@ class Camera():
         new_position = self.relative_position + self.focus
         self.position = new_position
 
+    def get_distance_to_object(self, object_position):
+        return np.linalg.norm(object_position-self.position)
+
+    def get_screen_coordinates_from_object_coordinates(self, object_position):
+
+        focus_vector = self.get_camera_focus_vector()
+        focus_unit_vector = focus_vector / np.linalg.norm(focus_vector)
+
+        object_vector = object_position - self.position
+        object_distance = np.linalg.norm(object_vector)
+
+        #If the object is behind the camera, don't render it
+        if object_vector.dot(focus_unit_vector) < 0:
+            return None
+
+        # Distance to hypothetical plane perpendicular to focus that intersects object
+        object_projection_onto_focus = object_vector.dot(focus_unit_vector)
+
+        #Check if the object is outside field of view and shouldn't be rendered
+        object_angle_from_focus = np.arccos(object_projection_onto_focus / (object_distance))
+        if object_angle_from_focus > self.fov / 2:
+            return None
+
+        #Focus vector point on the hypothetical perpendicular plane that intersects object
+        object_plane_focus = object_projection_onto_focus * focus_unit_vector
+
+        #Vector from focus point to object gives position on a hypothetical plane perpendicular to the cameras focus
+        object_plane_focus_diff = object_vector - object_plane_focus
+        object_plane_focus_diff = object_plane_focus_diff / np.linalg.norm(object_plane_focus_diff)
+
+        #get a vector for always up, use it to get a vector that points left by camera perspective
+        perspective_vertical_vector = np.array([0,0,1])
+        screen_orientation_left = np.cross(perspective_vertical_vector, focus_unit_vector)
+        screen_orientation_left = screen_orientation_left/np.linalg.norm(screen_orientation_left)
+
+        #Now use the screen left vector to get a perpendicular screen up vector
+        screen_orientation_up = np.cross(screen_orientation_left, focus_unit_vector)
+        screen_orientation_up = screen_orientation_up/np.linalg.norm(screen_orientation_up)
+
+        distance_from_screen_center = self.screen_border * object_angle_from_focus * 180 / self.fov
+        top_screen_distance = distance_from_screen_center * object_plane_focus_diff.dot(screen_orientation_up)
+        left_screen_distance = distance_from_screen_center * (-object_plane_focus_diff.dot(screen_orientation_left))
+
+        return self.screen_size[0]/2 + left_screen_distance, self.screen_size[1]/2 + top_screen_distance
+
+
 
 class SimulationRenderer():
     def __init__(self, screen, sim_states, camera):
@@ -51,46 +99,19 @@ class SimulationRenderer():
         return 1
 
     def render_object(self, object_radius, object_position, **circle_kwargs):
-        focus_vector = self.camera.get_camera_focus_vector()
-        focus_unit_vector = focus_vector/np.linalg.norm(focus_vector)
-        focus_distance = np.linalg.norm(focus_vector)
 
-        object_vector = object_position - self.camera.position
-        object_distance = np.linalg.norm(object_vector)
-
-        if object_vector.dot(focus_unit_vector) < 0:
+        coords = self.camera.get_screen_coordinates_from_object_coordinates(object_position)
+        if coords is None:
             return
+        else:
+            screen_x, screen_y = coords
 
-        perspective_vertical_vector = np.array([0,0,1])
-        screen_orientation_left = np.cross(perspective_vertical_vector, focus_unit_vector)
-        screen_orientation_left = screen_orientation_left/np.linalg.norm(screen_orientation_left)
-        screen_orientation_up = np.cross(screen_orientation_left, focus_unit_vector)
-        screen_orientation_up = screen_orientation_up/np.linalg.norm(screen_orientation_up)
-        # vertical_distance = 2*focus_distance*focus_distance*(1-np.cos(self.camera.fov*np.pi/180))
-        # screen_orientation_up = self.camera.focus + np.array([0,0,vertical_distance])
-        # up_focus_vector = screen_orientation_up - self.camera.position
-        # screen_orientation_left = screen_orientation_left/np.linalg.norm(screen_orientation_left)
-        # screen_orientation_up = screen_orientation_up/np.linalg.norm(screen_orientation_up)
-
-        object_projection_onto_focus = object_vector.dot(focus_unit_vector)
-        object_angle_from_focus = np.arccos(object_projection_onto_focus/(object_distance))
-        if object_angle_from_focus > self.camera.fov/2:
-            return
-
-        object_plane_focus = object_projection_onto_focus*focus_unit_vector
-        object_plane_focus_diff = object_vector - object_plane_focus
-        object_plane_focus_diff = object_plane_focus_diff/np.linalg.norm(object_plane_focus_diff)
-
-
+        object_distance = self.camera.get_distance_to_object(object_position)
         object_size_angle = 2*np.arctan(object_radius/object_distance)
         apparent_size = screen.get_height()*object_size_angle/(np.pi*(self.camera.fov/180))
         apparent_size = 5*max([0.2, apparent_size])
 
-        distance_from_screen_center = (screen.get_height()/2)*object_angle_from_focus*180/self.camera.fov
-        top_screen_distance = distance_from_screen_center*object_plane_focus_diff.dot(screen_orientation_up)
-        left_screen_distance = distance_from_screen_center*(-object_plane_focus_diff.dot(screen_orientation_left))
-
-        apparent_position = pygame.Vector2(screen.get_width()/2 + left_screen_distance, screen.get_height() / 2 + top_screen_distance)
+        apparent_position = pygame.Vector2(screen_x, screen_y)
 
         pygame.draw.circle(self.screen, center=apparent_position, radius=apparent_size, **circle_kwargs)
 
@@ -112,10 +133,11 @@ class SimulationRenderer():
 
 
 
+
 player_pos = pygame.Vector2(screen.get_width() / 2, screen.get_height() / 2)
 planet_system = simulation.get_test_sim()
 max_distance = planet_system.get_largest_distance_between_objects()
-camera = Camera(np.array([1000,1000,max_distance]), np.array([0,0,0]))
+camera = Camera(np.array([1000,1000,max_distance]), np.array([0,0,0]), screen_size=screen.get_size())
 sim_speed = 1
 sim_dt_power = 0
 camera_speed = 500
@@ -179,7 +201,7 @@ try:
         # RENDER YOUR GAME HERE
 
 
-        sim_renderer.render_focus()
+        # sim_renderer.render_focus()
         sim_renderer.render_planets()
 
         keys = pygame.key.get_pressed()
