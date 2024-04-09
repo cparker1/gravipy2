@@ -154,6 +154,18 @@ class Simulator():
 
         self.frames = []
 
+    def get_largest_distance_between_objects(self):
+        return max(self.get_distances_between_objects())
+
+    def get_distances_between_objects(self):
+        return [np.linalg.norm(p1.position - p2.position) for p1, p2 in itertools.combinations(self.planetesimals, 2)]
+
+    def get_median_distance_between_objects(self):
+        return np.median(self.get_distances_between_objects())
+
+    def get_center_of_mass(self):
+        return np.mean(np.array([p.mass*p.position for p in self.planetesimals]), axis=0)
+
     def get_net_momentum(self):
         return np.sum(np.array([p.velocity*p.mass for p in self.planetesimals]), axis=0)
 
@@ -193,6 +205,14 @@ class Simulator():
                 self.planetesimals.extend(new_planets)
                 self.handle_collisions()
 
+    def trim_escapees(self, threshold=10):
+        com = self.get_center_of_mass()
+        distances = [(p, np.linalg.norm(p.position-com)) for p in self.planetesimals]
+        farthest = sorted(distances, key=lambda p: p[1])
+        if farthest[-1][1] > threshold*np.median([p[1] for p in farthest[:-1]]):
+            delete_planet = farthest[-1][0]
+            self.planetesimals.remove(delete_planet)
+            self.trim_escapees()
 
 
 
@@ -207,9 +227,10 @@ class Simulator():
         for _ in range(iterations):
             self.apply_net_forces()
             self.handle_collisions()
-            if np.max(np.abs(self.get_net_momentum() - self.initial_momentum)) > 0.01:
+        self.trim_escapees()
+            # if np.max(np.abs(self.get_net_momentum() - self.initial_momentum)) > 0.01:
                 # print(self)
-                break
+                # break
         # print(self)
 
 
