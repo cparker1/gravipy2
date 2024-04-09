@@ -141,6 +141,7 @@ camera = Camera(np.array([1000,1000,max_distance]), np.array([0,0,0]), screen_si
 sim_speed = 1
 sim_dt_power = 0
 camera_speed = 500
+zoom_speed = 2
 trail_markers_enabled = True
 axis_markers_enabled = True
 
@@ -206,17 +207,46 @@ try:
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
-            camera.move_focus(camera_speed*np.array([1,0,0]))
+            #Zoom in
+            focus_vector = camera.get_camera_focus_vector()
+            distance = np.linalg.norm(focus_vector)
+            unit = focus_vector/distance
+            speed = zoom_speed*distance/100
+            camera.move_camera(speed*unit)
         if keys[pygame.K_s]:
-            camera.move_focus(camera_speed*np.array([-1,0,0]))
+            # Zoom out
+            focus_vector = camera.get_camera_focus_vector()
+            distance = np.linalg.norm(focus_vector)
+            unit = focus_vector / distance
+            speed = zoom_speed * distance / 100
+            camera.move_camera(-speed * unit)
         if keys[pygame.K_a]:
-            camera.move_focus(camera_speed*np.array([0,1,0]))
+            #Rotate LEft
+            focus_vector = camera.get_camera_focus_vector()
+            distance = np.linalg.norm(focus_vector[:2])
+            left = np.cross(focus_vector, np.array([0,0,1]))
+            left = left/np.linalg.norm(left)
+            speed = distance/50 # ~tan(2 deg) = 0.02
+            camera.move_camera(speed*left)
         if keys[pygame.K_d]:
-            camera.move_focus(camera_speed*np.array([0,-1,0]))
+            #Rotate Right
+            focus_vector = camera.get_camera_focus_vector()
+            distance = np.linalg.norm(focus_vector[:2])
+            left = np.cross(focus_vector, np.array([0,0,1]))
+            right = -left/np.linalg.norm(left)
+            speed = distance/50 # ~tan(2 deg) = 0.02
+            camera.move_camera(speed*right)
+
         if keys[pygame.K_LSHIFT]:
-            camera.move_focus(camera_speed*np.array([0,0,1]))
+            focus_vector = camera.get_camera_focus_vector()
+            distance = np.linalg.norm(focus_vector)
+            speed = zoom_speed * distance / 100
+            camera.move_camera(speed * np.array([0,0,1]))
         if keys[pygame.K_LCTRL]:
-            camera.move_focus(camera_speed * np.array([0,0,-1]))
+            focus_vector = camera.get_camera_focus_vector()
+            distance = np.linalg.norm(focus_vector)
+            speed = zoom_speed * distance / 100
+            camera.move_camera(speed * np.array([0, 0, -1]))
 
         if keys[pygame.K_i]:
             camera.move_camera(camera_speed*np.array([1,0,0]))
