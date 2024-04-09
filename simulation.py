@@ -8,18 +8,6 @@ import numpy as np
 import pygame
 import itertools
 
-import main
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
-
-
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
-
 def get_random_name():
     roots = ["Wex", "Till", "Fires", "Waters", "Sandy", "Spice", "TRan", "Been", "Darli", "Peent", "glor", "Effee"]
     suffixes = ["A", "B", "S"]
@@ -89,7 +77,7 @@ class Planetesimal():
             new_position = np.array([(np.random.rand()-0.5)*10*(p1.radius+p2.radius) for _ in range(3)])
             new_position = system_net_position + new_position
             new_radius = np.sqrt(system_net_radius/num_new_masses)
-            p = main.Planetesimal(name=get_random_name(),
+            p = cls(name=get_random_name(),
                                   mass=new_mass,
                                   radius=new_radius,
                                   color=get_random_color(),
@@ -102,7 +90,7 @@ class Planetesimal():
         new_momentum = system_momentum - net_new_momentum
         new_velocity = new_momentum/new_mass
         new_position = np.array([(np.random.rand()-0.5)*10*(p1.radius+p2.radius) for _ in range(3)])
-        p = main.Planetesimal(name=get_random_name(),
+        p = cls(name=get_random_name(),
                               mass=new_mass,
                               radius=new_radius,
                               color=get_random_color(),
