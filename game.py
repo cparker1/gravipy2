@@ -1,7 +1,7 @@
 # Example file showing a basic pygame "game loop"
 import numpy as np
 import pygame
-import main
+import simulation
 import itertools
 
 # pygame setup
@@ -10,7 +10,7 @@ screen = pygame.display.set_mode((1280, 1280))
 clock = pygame.time.Clock()
 running = True
 
-sim = main.get_test_sim()
+sim = simulation.get_test_sim()
 
 class Camera():
     def __init__(self, position_vector, focus_vector):
@@ -105,7 +105,7 @@ class SimulationRenderer():
         planet_dot_products = [(p, p.position.dot(self.camera.get_camera_focus_vector())) for p in all_objects]
         # planet_dot_products = list(filter(lambda x: x[1] >= 0, planet_dot_products))
         # planet_dot_products = list(filter(lambda x: x[1] < self.camera.max_render_distance**2, planet_dot_products))
-        planet_dot_products.sort(key=lambda x: x[1])
+        planet_dot_products.sort(key=lambda x: x[1], reverse=True)
         for p, distance in planet_dot_products:
             self.render_object(p.radius, p.position, color=p.color)
 
@@ -113,8 +113,8 @@ class SimulationRenderer():
 
 
 player_pos = pygame.Vector2(screen.get_width() / 2, screen.get_height() / 2)
-planet_system = main.get_test_sim()
-max_distance = max([np.linalg.norm(p1.position-p2.position) for p1, p2 in itertools.combinations(planet_system.planetesimals, 2)])
+planet_system = simulation.get_test_sim()
+max_distance = planet_system.get_largest_distance_between_objects()
 camera = Camera(np.array([1000,1000,max_distance]), np.array([0,0,0]))
 sim_speed = 1
 sim_dt_power = 0
@@ -126,7 +126,7 @@ def get_axis_marker_planets(centered_on=np.array([0,0,0])):
     marker_planets=[]
     for n in 1000*np.arange(-100,100,1):
         for color, direction in [("white", np.array([1,0,0])), ("white", np.array([0,1,0])), ("pink", np.array([0,0,1]))]:
-            marker_planets.append(main.Planetesimal(name="",
+            marker_planets.append(simulation.Planetesimal(name="",
                                                     mass=0,
                                                     radius=40,
                                                     color=color,
@@ -134,9 +134,9 @@ def get_axis_marker_planets(centered_on=np.array([0,0,0])):
                                                     velocity_vector=np.array([0,0,0])))
     return marker_planets
 
-marker_system = main.Simulator(get_axis_marker_planets(), 1, "Markers", 0)
+marker_system = simulation.Simulator(get_axis_marker_planets(), 1, "Markers", 0)
 
-extra_markers = main.Simulator([], 1, "Markers", 0)
+extra_markers = simulation.Simulator([], 1, "Markers", 0)
 
 try:
     iteration = 0
@@ -152,11 +152,11 @@ try:
         if iteration%30 == 0:
             new_markers = []
             for p in planet_system.planetesimals:
-                new_markers.append(main.Planetesimal(name="m", mass=0, radius=p.radius/2, color=p.color, position_vector=p.position, velocity_vector=np.array([0,0,0])))
+                new_markers.append(simulation.Planetesimal(name="m", mass=0, radius=p.radius/2, color=p.color, position_vector=p.position, velocity_vector=np.array([0,0,0])))
             extra_markers.planetesimals.extend(new_markers)
 
         focus_planet = max(planet_system.planetesimals, key=lambda p: p.mass)
-        marker_system = main.Simulator(get_axis_marker_planets(centered_on=focus_planet.position), 0, "", 0)
+        marker_system = simulation.Simulator(get_axis_marker_planets(centered_on=focus_planet.position), 0, "", 0)
         camera.focus = focus_planet.position
         camera.move_camera_to_focus(camera.initial_position)
 
@@ -167,7 +167,7 @@ try:
         if trail_markers_enabled == True:
             # render_systems.extend([extra_markers])
             if len(extra_markers.planetesimals) > 20*len(planet_system.planetesimals):
-                temp_system = main.Simulator(extra_markers.planetesimals[-20*len(planet_system.planetesimals):], 0, "", 0)
+                temp_system = simulation.Simulator(extra_markers.planetesimals[-20*len(planet_system.planetesimals):], 0, "", 0)
                 render_systems.extend([temp_system])
 
 
@@ -209,6 +209,13 @@ try:
         if keys[pygame.K_h]:
             camera.move_camera(camera_speed * np.array([0,0,-1]))
 
+        if keys[pygame.K_TAB]:
+            distance = planet_system.get_largest_distance_between_objects()
+            position_unit_vector = camera.relative_position/np.linalg.norm(camera.relative_position)
+            camera.relative_position = distance*position_unit_vector*1.414
+
+
+
         if keys[pygame.K_0]:
             camera.focus = np.array([0,0,0])
             camera.reset_position()
@@ -224,19 +231,19 @@ try:
             raise Exception("Quit")
 
         if keys[pygame.K_F9]:
-            planet_system = main.get_test_sim()
-            marker_system = main.Simulator(get_axis_marker_planets(), 1, "Markers", 0)
+            planet_system = simulation.get_test_sim()
+            marker_system = simulation.Simulator(get_axis_marker_planets(), 1, "Markers", 0)
 
         if keys[pygame.K_PAGEUP]:
-            if sim_renderer.camera.fov < 120:
+            if sim_renderer.camera.fov < 180:
                 sim_renderer.camera.fov += 5
 
         if keys[pygame.K_PAGEDOWN]:
-            if sim_renderer.camera.fov > 40:
+            if sim_renderer.camera.fov > 10:
                 sim_renderer.camera.fov -= 5
 
         if keys[pygame.K_INSERT]:
-            if sim_dt_power < 100:
+            if sim_dt_power < 250:
                 sim_dt_power += 1
                 planet_system.sim_step_duration = 1+sim_dt_power
         if keys[pygame.K_DELETE]:
