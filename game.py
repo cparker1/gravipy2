@@ -350,6 +350,7 @@ try:
 
         clock.tick(60)  # limits FPS to 60
 except Exception as e:
+    raise e
+finally:
     pygame.display.quit()
     pygame.quit()
-    raise e
