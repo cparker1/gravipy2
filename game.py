@@ -32,6 +32,9 @@ class Camera():
     def get_camera_focus_vector(self):
         return self.focus - self.position
 
+    def get_camera_focus_unit_vector(self):
+        return self.get_camera_focus_vector()/np.linalg.norm(self.get_camera_focus_vector())
+
     def reset_position(self):
         self.position = self.initial_position.copy()
 
@@ -43,9 +46,7 @@ class Camera():
         return np.linalg.norm(object_position-self.position)
 
     def get_screen_coordinates_from_object_coordinates(self, object_position):
-
-        focus_vector = self.get_camera_focus_vector()
-        focus_unit_vector = focus_vector / np.linalg.norm(focus_vector)
+        focus_unit_vector = self.get_camera_focus_unit_vector()
 
         object_vector = object_position - self.position
         object_distance = np.linalg.norm(object_vector)
@@ -92,13 +93,24 @@ class SimulationRenderer():
         self.camera = camera
         self.screen = screen
 
-    def render_state(cls):
-        pass
+        self.render_queue = []
+
+    def render_state(self, clear_queue_after_render=True):
+        self.render_queue.sort(key=lambda entry: entry[0])
+        for entry in self.render_queue:
+            distance, render_function, render_args = entry
+            if len(render_args) > 0:
+                render_function(*render_args)
+            else:
+                render_function()
+        if clear_queue_after_render == True:
+            self.render_queue = []
+
 
     def get_size_scaling(self, distance):
         return 1
 
-    def render_object(self, object_radius, object_position, **circle_kwargs):
+    def render_object(self, object_radius, object_position, color):
 
         coords = self.camera.get_screen_coordinates_from_object_coordinates(object_position)
         if coords is None:
@@ -113,22 +125,39 @@ class SimulationRenderer():
 
         apparent_position = pygame.Vector2(screen_x, screen_y)
 
-        pygame.draw.circle(self.screen, center=apparent_position, radius=apparent_size, **circle_kwargs)
+        pygame.draw.circle(self.screen, center=apparent_position, radius=apparent_size, color=color)
 
     def render_focus(self):
         return
         self.render_object(100, self.camera.focus, color="red")
 
+    def render_line(self, color, position_one, position_two, **lineargs):
+        line_start = self.camera.get_screen_coordinates_from_object_coordinates(position_one)
+        line_end = self.camera.get_screen_coordinates_from_object_coordinates(position_two)
+        if None in [line_end, line_start]:
+            return
+
+
+        pygame.draw.line(self.screen, color, line_start, line_end, width=1)
+
     def render_planets(self):
         all_objects = []
         for s in self.star_systems:
             all_objects.extend(s.planetesimals)
-        planet_dot_products = [(p, p.position.dot(self.camera.get_camera_focus_vector())) for p in all_objects]
+        planet_dot_products = [(p, self.camera.get_distance_to_object(p.position)) for p in all_objects]
         # planet_dot_products = list(filter(lambda x: x[1] >= 0, planet_dot_products))
         # planet_dot_products = list(filter(lambda x: x[1] < self.camera.max_render_distance**2, planet_dot_products))
         planet_dot_products.sort(key=lambda x: x[1], reverse=True)
         for p, distance in planet_dot_products:
-            self.render_object(p.radius, p.position, color=p.color)
+            self.render_queue.append([distance, self.render_object, (p.radius, p.position, p.color)])
+            # self.render_object(p.radius, p.position, color=p.color)
+
+    def render_markers(self):
+        all_objects = []
+
+
+    # Build render queue, sort by
+    # (apparent_distance, render_function, *render_function_args)
 
 
 
@@ -171,6 +200,7 @@ try:
             if event.type == pygame.QUIT:
                 running = False
         planet_system.run_sim(1+2**sim_speed)
+        screen.fill("black")
 
         if iteration%30 == 0:
             new_markers = []
@@ -197,13 +227,14 @@ try:
         sim_renderer = SimulationRenderer(screen, render_systems, camera)
 
         # fill the screen with a color to wipe away anything from last frame
-        screen.fill("black")
+
 
         # RENDER YOUR GAME HERE
 
 
         # sim_renderer.render_focus()
         sim_renderer.render_planets()
+        sim_renderer.render_state()
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
