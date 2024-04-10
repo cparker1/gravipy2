@@ -51,11 +51,10 @@ class Camera():
     def align_camera_to_focus_and_third_object(self, third_position):
         #Rotates camera to be same distance and elevation from focus, but aligns position with the focus and another body, useful for locking camera to planet orbiting a more massive object
         camera_xy_distance_from_focus = np.linalg.norm(self.relative_position[:2])#x,y only
-        third_object_to_focus = self.focus - third_position
+        third_object_to_focus = self.focus[:2] - third_position[:2]
         third_object_to_focus_unit_vector = third_object_to_focus/np.linalg.norm(third_object_to_focus)
-        new_x, new_y = camera_xy_distance_from_focus*third_object_to_focus_unit_vector[:2] #
+        new_x, new_y = camera_xy_distance_from_focus*third_object_to_focus_unit_vector #
         self.relative_position = np.array([new_x, new_y, self.relative_position[2]])
-        print(self.relative_position)
 
     def get_screen_coordinates_from_object_coordinates(self, object_position):
         focus_unit_vector = self.get_camera_focus_unit_vector()
