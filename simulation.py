@@ -11,6 +11,7 @@ import itertools
 def get_random_name():
     roots = ["Wex", "Till", "Fires", "Waters", "Sandy", "Spice", "TRan", "Been", "Darli", "Peent", "glor", "Effee"]
     suffixes = ["A", "B", "S"]
+    suffixes.extend([f"{n:08d}" for n in range(0,10000)])
     return f"{roots[np.random.randint(0, len(roots)-1)]}-{suffixes[random.randint(0, len(suffixes)-1)]}"
 
 def get_random_color():
