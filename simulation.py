@@ -18,7 +18,7 @@ def get_random_color():
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
 class Planetesimal():
-    def __init__(self, name, mass, radius, color, position_vector, velocity_vector):
+    def __init__(self, name="", mass=0, radius=1, color="white", position_vector=np.array([0,0,0]), velocity_vector=np.array([0,0,0])):
         self.name = name
         self.mass = mass
         self.color = color
@@ -26,11 +26,13 @@ class Planetesimal():
         self.position = position_vector
         self.velocity = velocity_vector
         self.net_force = np.array([0, 0, 0])
+        self.age = 0
 
     def apply_net_force(self, time_tick_duration):
         acceleration = self.net_force/self.mass
         self.velocity = self.velocity + acceleration*time_tick_duration
         self.position = self.position + time_tick_duration*self.velocity
+        self.age += time_tick_duration
 
     def reset_net_force(self):
         self.net_force = np.array([0,0,0])
@@ -139,11 +141,19 @@ class Simulator():
         self.gravity_constant = gravity_constant
         self.initial_momentum = self.get_net_momentum()
         self.total_mass = sum([p.mass for p in planetesimals])
-
+        self.sim_time = 0
         self.frames = []
 
     def get_largest_distance_between_objects(self):
         return max(self.get_distances_between_objects())
+
+    def get_most_massive_planet(self):
+        return sorted(self.planetesimals, key=lambda p: p.mass, reverse=True)[0]
+
+    def get_object_closest_to_position(self, position):
+        positions = [(p, np.linalg.norm(position-p.position)) for p in self.planetesimals]
+        positions.sort(key=lambda pos: pos[1])
+        return positions[0][0] #planet object with smallest distance to point
 
     def get_distances_between_objects(self):
         return [np.linalg.norm(p1.position - p2.position) for p1, p2 in itertools.combinations(self.planetesimals, 2)]
@@ -167,6 +177,8 @@ class Simulator():
     def apply_net_forces(self):
         self.calculate_net_forces()
         [p.apply_net_force(self.sim_step_duration) for p in self.planetesimals]
+        self.sim_time += self.sim_step_duration
+        # self.frames.append(self.planetesimals.copy())
         # self.frames.append(self.planetesimals.copy())
         # print(self.get_net_momentum())
 
@@ -245,13 +257,13 @@ def get_test_sim(g=0.2):
                            velocity_vector=speed * np.array([0.7, 0.5, 0]))
     planet5 = Planetesimal("Urunn", 4000, radius=200, color="blue", position_vector=np.array([30000, 0, 0]),
                            velocity_vector=speed * np.array([1, .5, 0])/2)
-    planet6 = Planetesimal("Nepato", 4000, radius=200, color="blue", position_vector=np.array([-30000, 0, 0]),
+    planet6 = Planetesimal("Nepato", 4000, radius=200, color="cyan", position_vector=np.array([-30000, 0, 0]),
                            velocity_vector=speed * np.array([0.7, 0, 0]))
-    planet7 = Planetesimal("Plarn", 4000, radius=200, color="blue", position_vector=np.array([45000, 5000, -5000]),
+    planet7 = Planetesimal("Plarn", 4000, radius=200, color="grey", position_vector=np.array([45000, 5000, -5000]),
                            velocity_vector=speed * np.array([0.7, 0, 0]))
-    planet8 = Planetesimal("Chareen", 4000, radius=200, color="blue", position_vector=np.array([-45000, -30000,-10000]),
+    planet8 = Planetesimal("Chareen", 4000, radius=200, color="white", position_vector=np.array([-45000, -30000,-10000]),
                            velocity_vector=speed * np.array([0.7, 0, 0]))
-    planet9 = Planetesimal("X-9-FFB", 4000, radius=200, color="blue", position_vector=np.array([-55000, 0, 10000]),
+    planet9 = Planetesimal("X-9-FFB", 4000, radius=200, color="violet", position_vector=np.array([-55000, 0, 10000]),
                            velocity_vector=speed * np.array([0.7, 0, 0]))
 
     planets = [planet1, planet2, planet3, planet4, planet5, planet6, planet7, planet8, planet9]
