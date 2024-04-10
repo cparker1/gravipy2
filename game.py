@@ -41,7 +41,7 @@ class Camera():
     def reset_position(self):
         self.position = self.initial_position.copy()
 
-    def move_camera_to_focus(self, relative_vector):
+    def move_camera_to_focus(self):
         new_position = self.relative_position + self.focus
         self.position = new_position
 
@@ -50,9 +50,12 @@ class Camera():
 
     def align_camera_to_focus_and_third_object(self, third_position):
         #Rotates camera to be same distance and elevation from focus, but aligns position with the focus and another body, useful for locking camera to planet orbiting a more massive object
-        distance = self.get_camera_distance_to_focus()
-        focus_to_third_object = third_position - self.focus
-        focus_to_third_object
+        camera_xy_distance_from_focus = np.linalg.norm(self.relative_position[:2])#x,y only
+        third_object_to_focus = self.focus - third_position
+        third_object_to_focus_unit_vector = third_object_to_focus/np.linalg.norm(third_object_to_focus)
+        new_x, new_y = camera_xy_distance_from_focus*third_object_to_focus_unit_vector[:2] #
+        self.relative_position = np.array([new_x, new_y, self.relative_position[2]])
+        print(self.relative_position)
 
     def get_screen_coordinates_from_object_coordinates(self, object_position):
         focus_unit_vector = self.get_camera_focus_unit_vector()
@@ -192,7 +195,7 @@ planet_system = simulation.get_test_sim()
 max_distance = planet_system.get_largest_distance_between_objects()
 focus_planet = planet_system.get_most_massive_planet()
 camera = Camera(np.array([max_distance,max_distance,max_distance]), np.array([0,0,0]), screen_size=screen.get_size())
-
+lock_planet_viewing_angle = False
 sim_speed = 1
 sim_dt_power = 100
 planet_system.sim_step_duration = 1+sim_dt_power
@@ -202,6 +205,7 @@ trail_markers_enabled = True
 axis_markers_enabled = True
 time_interval_for_capture = 1000
 desired_trails = 100
+
 
 def get_next_planet(this_planet, planet_system, previous=False):
     #Does this planet exist in the systems?
@@ -257,7 +261,11 @@ try:
         axis_marker_systems = get_axis_marker_planet_systems(centered_on=most_massive_planet.position)
 
         camera.focus = focus_planet.position
-        camera.move_camera_to_focus(camera.initial_position)
+        camera.move_camera_to_focus()
+        if lock_planet_viewing_angle is True:
+            camera.align_camera_to_focus_and_third_object(most_massive_planet.position)
+            camera.move_camera_to_focus()
+
 
 
         planetary_systems = [planet_system]
@@ -312,6 +320,14 @@ try:
             speed = distance/50 # ~tan(2 deg) = 0.02
             camera.move_camera(speed*right)
 
+        if keys[pygame.K_q]:
+            #Lock angle of focus to coordinate system planet
+            lock_planet_viewing_angle = True
+
+        if keys[pygame.K_e]:
+            lock_planet_viewing_angle = False
+
+
         if keys[pygame.K_LSHIFT]:
             focus_vector = camera.get_camera_focus_vector()
             distance = np.linalg.norm(focus_vector)
@@ -359,7 +375,7 @@ try:
 
         if keys[pygame.K_F9]:
             planet_system = simulation.get_test_sim()
-            axis_marker_systems = get_axis_marker_planet_systems()
+            axis_marker_systems = get_axis_marker_planet_systems(centered_on=most_massive_planet.position)
 
         if keys[pygame.K_PAGEUP]:
             if sim_renderer.camera.fov < 180:
@@ -392,6 +408,9 @@ try:
 
         if keys[pygame.K_LEFT]:
             focus_planet = get_next_planet(focus_planet, planet_system, previous=True)
+
+        if keys[pygame.K_DOWN]:
+            focus_planet = most_massive_planet
 
         if keys[pygame.K_BACKSPACE]:
             extra_markers.planetesimals = []
