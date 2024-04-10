@@ -72,6 +72,7 @@ class Camera():
         #Check if the object is outside field of view and shouldn't be rendered
         object_angle_from_focus = np.arccos(object_projection_onto_focus / (object_distance))
         if object_angle_from_focus > self.fov / 2:
+            print(object_position)
             return None
 
         #Focus vector point on the hypothetical perpendicular plane that intersects object
@@ -165,19 +166,16 @@ class SimulationRenderer():
         rendered_planets_last_position = {}
         all_objects = []
         for s in planetary_systems:
-            all_objects.extend(s.planetesimals)
-        for p in all_objects:
-            if p.name not in rendered_planets_last_position.keys():
-                rendered_planets_last_position[p.name] = p.position
-            else:
-                last_pos = rendered_planets_last_position[p.name]
-                this_pos = p.position
-                rendered_planets_last_position[p.name] = this_pos
-                distance = self.camera.get_distance_to_object((this_pos+last_pos)/2)
-                self.render_queue.append([distance, self.render_line, (p.color, last_pos, this_pos)])
+            for p in s.planetesimals:
+                if p.name not in rendered_planets_last_position.keys():
+                    rendered_planets_last_position[p.name] = p.position
+                else:
+                    last_pos = rendered_planets_last_position[p.name]
+                    this_pos = p.position
+                    rendered_planets_last_position[p.name] = this_pos
+                    distance = self.camera.get_distance_to_object((this_pos+last_pos)/2)
+                    self.render_queue.append([distance, self.render_line, (p.color, last_pos, this_pos)])
 
-
-        pass
     def render_markers(self):
         all_objects = []
 
@@ -228,7 +226,7 @@ def get_next_planet(this_planet, planet_system, previous=False):
 def get_axis_marker_planet_systems(centered_on=np.array([0,0,0]), range=10000):
     axis_planet_systems = []
     for color, direction in [("white", np.array([1,0,0])), ("white", np.array([0,1,0])), ("pink", np.array([0,0,1]))]:
-        axis_planet_systems.append(simulation.Simulator([simulation.Planetesimal(color=color, position_vector=centered_on-range*direction), simulation.Planetesimal(color=color, position_vector=centered_on+range*direction)]))
+        axis_planet_systems.append(simulation.Simulator([simulation.Planetesimal(name=str(direction), color=color, position_vector=centered_on-range*direction), simulation.Planetesimal(name=str(direction), color=color, position_vector=centered_on+range*direction)]))
     return axis_planet_systems
 
 axis_marker_systems = get_axis_marker_planet_systems()
