@@ -6,7 +6,7 @@ import itertools
 
 # pygame setup
 pygame.init()
-screen = pygame.display.set_mode((1280, 800))
+screen = pygame.display.set_mode((1920, 1080))
 clock = pygame.time.Clock()
 running = True
 
@@ -71,8 +71,9 @@ class Camera():
 
         #Check if the object is outside field of view and shouldn't be rendered
         object_angle_from_focus = np.arccos(object_projection_onto_focus / (object_distance))
+        if object_angle_from_focus == np.nan:
+            object_angle_from_focus = 0
         if object_angle_from_focus > self.fov / 2:
-            print(object_position)
             return None
 
         #Focus vector point on the hypothetical perpendicular plane that intersects object
@@ -80,7 +81,12 @@ class Camera():
 
         #Vector from focus point to object gives position on a hypothetical plane perpendicular to the cameras focus
         object_plane_focus_diff = object_vector - object_plane_focus
-        object_plane_focus_diff = object_plane_focus_diff / np.linalg.norm(object_plane_focus_diff)
+        object_distance_to_focus_on_focus_plane = np.linalg.norm(object_plane_focus_diff)
+        if np.isclose(object_distance_to_focus_on_focus_plane, 0):
+            object_plane_focus_diff = np.array([0,0,0])
+            object_angle_from_focus = 0
+        else:
+            object_plane_focus_diff = object_plane_focus_diff / np.linalg.norm(object_plane_focus_diff)
 
         #get a vector for always up, use it to get a vector that points left by camera perspective
         perspective_vertical_vector = np.array([0,0,1])
@@ -107,7 +113,7 @@ class SimulationRenderer():
         self.render_queue = []
 
     def render_state(self, clear_queue_after_render=True):
-        self.render_queue.sort(key=lambda entry: entry[0])
+        self.render_queue.sort(key=lambda entry: entry[0], reverse=True)
         for entry in self.render_queue:
             distance, render_function, render_args = entry
             if len(render_args) > 0:
@@ -205,11 +211,7 @@ desired_trails = 100
 
 
 def get_next_planet(this_planet, planet_system, previous=False):
-    #Does this planet exist in the systems?
-    if this_planet not in planet_system.planetesimals:
-        return planet_system.get_object_closest_to_position(this_planet.position)
-
-    else:
+    if this_planet in planet_system.planetesimals:
         idx = planet_system.planetesimals.index(this_planet)
         if previous is True:
             idx -= 1
@@ -220,7 +222,11 @@ def get_next_planet(this_planet, planet_system, previous=False):
         elif idx >= len(planet_system.planetesimals)-1:
             idx = 0
         return planet_system.planetesimals[idx]
+    else:
+        return get_closest_planet(this_planet, planet_system)
 
+def get_closest_planet(this_planet, planet_system):
+    return planet_system.get_object_closest_to_position(this_planet.position)
 
 
 def get_axis_marker_planet_systems(centered_on=np.array([0,0,0]), range=10000):
@@ -256,6 +262,10 @@ try:
 
         most_massive_planet = planet_system.get_most_massive_planet()
         axis_marker_systems = get_axis_marker_planet_systems(centered_on=most_massive_planet.position)
+
+        # move camera focus to nearest planet if planet no longer a thing
+        if focus_planet not in planet_system.planetesimals:
+            focus_planet = get_closest_planet(focus_planet, planet_system)
 
         camera.focus = focus_planet.position
         camera.move_camera_to_focus()
