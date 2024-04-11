@@ -52,7 +52,10 @@ class Camera():
         #Rotates camera to be same distance and elevation from focus, but aligns position with the focus and another body, useful for locking camera to planet orbiting a more massive object
         camera_xy_distance_from_focus = np.linalg.norm(self.relative_position[:2])#x,y only
         third_object_to_focus = self.focus[:2] - third_position[:2]
-        third_object_to_focus_unit_vector = third_object_to_focus/np.linalg.norm(third_object_to_focus)
+        third_object_to_focus_norm = np.linalg.norm(third_object_to_focus)
+        if np.isclose(third_object_to_focus_norm, 0):
+            return
+        third_object_to_focus_unit_vector = third_object_to_focus/third_object_to_focus_norm
         new_x, new_y = camera_xy_distance_from_focus*third_object_to_focus_unit_vector #
         self.relative_position = np.array([new_x, new_y, self.relative_position[2]])
 
@@ -208,6 +211,7 @@ trail_markers_enabled = True
 axis_markers_enabled = True
 time_interval_for_capture = 1000
 desired_trails = 100
+background_color = "black"
 
 
 def get_next_planet(this_planet, planet_system, previous=False):
@@ -241,6 +245,7 @@ extra_markers = simulation.Simulator([], 1, "Markers", 0)
 
 try:
     iteration = 0
+    iteration_of_last_focus_change = 0
     time_since_last_capture = 0
     while running:
         iteration += 1
@@ -250,7 +255,7 @@ try:
             if event.type == pygame.QUIT:
                 running = False
         planet_system.run_sim(1+2**sim_speed)
-        screen.fill("black")
+        screen.fill(background_color)
 
         time_since_capture = planet_system.sim_time - time_since_last_capture
         if time_since_capture > time_interval_for_capture:
@@ -411,19 +416,33 @@ try:
                 desired_trails = 1
 
         if keys[pygame.K_RIGHT]:
-            focus_planet = get_next_planet(focus_planet, planet_system, previous=False)
+            if iteration - iteration_of_last_focus_change > 20:
+                focus_planet = get_next_planet(focus_planet, planet_system, previous=False)
+                iteration_of_last_focus_change = iteration
 
         if keys[pygame.K_LEFT]:
-            focus_planet = get_next_planet(focus_planet, planet_system, previous=True)
+            if iteration - iteration_of_last_focus_change > 20:
+                focus_planet = get_next_planet(focus_planet, planet_system, previous=True)
+                iteration_of_last_focus_change = iteration
 
         if keys[pygame.K_DOWN]:
-            focus_planet = most_massive_planet
+            focus_planet = planet_system.get_most_massive_planet()
 
         if keys[pygame.K_BACKSPACE]:
             extra_markers.planetesimals = []
 
         if keys[pygame.K_SLASH]:
-            axis_markers_enabled = not axis_markers_enabled
+            if iteration - iteration_of_last_focus_change > 20:
+                iteration_of_last_focus_change = iteration
+                axis_markers_enabled = not axis_markers_enabled
+
+        if keys[pygame.K_b]:
+            if iteration - iteration_of_last_focus_change > 20:
+                iteration_of_last_focus_change = iteration
+                if background_color == "black":
+                    background_color = "white"
+                else:
+                    background_color = "black"
 
         # flip() the display to put your work on screen
         pygame.display.flip()
