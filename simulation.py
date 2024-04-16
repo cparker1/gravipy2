@@ -1,12 +1,9 @@
-# This is a sample Python script.
 import random
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
 import numpy as np
 import pygame
 import itertools
+import configuration
+
 
 def get_random_name():
     roots = ["Wex", "Till", "Fires", "Waters", "Sandy", "Spice", "TRan", "Been", "Darli", "Peent", "glor", "Effee"]
@@ -14,11 +11,12 @@ def get_random_name():
     suffixes.extend([f"{n:08d}" for n in range(0,10000)])
     return f"{roots[np.random.randint(0, len(roots)-1)]}-{suffixes[random.randint(0, len(suffixes)-1)]}"
 
+
 def get_random_color():
     return list(pygame.colordict.THECOLORS.keys())[np.random.randint(0, len(pygame.colordict.THECOLORS.keys())-1)]
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
-class Planetesimal():
+
+class Planetesimal:
     def __init__(self, name="", mass=0, radius=1, color="white", position_vector=np.array([0,0,0]), velocity_vector=np.array([0,0,0])):
         self.name = name
         self.mass = mass
@@ -76,32 +74,31 @@ class Planetesimal():
         for n, new_mass in enumerate(new_masses):
             applied_momentum = np.array([new_mass*explosive_force*(np.random.rand()-0.5) for _ in range(3)])
             new_momentum = system_momentum/(num_new_masses-1) + applied_momentum
-            new_velocity= new_momentum/new_mass
+            new_velocity = new_momentum/new_mass
             new_position = np.array([(np.random.rand()-0.5)*10*(p1.radius+p2.radius) for _ in range(3)])
             new_position = system_net_position + new_position
             new_radius = np.sqrt(system_net_radius/num_new_masses)
             p = cls(name=get_random_name(),
-                                  mass=new_mass,
-                                  radius=new_radius,
-                                  color=get_random_color(),
-                                  position_vector=new_position,
-                                  velocity_vector=new_velocity)
+                    mass=new_mass,
+                    radius=new_radius,
+                    color=get_random_color(),
+                    position_vector=new_position,
+                    velocity_vector=new_velocity)
             new_planets.append(p)
 
-        #Equalize momeentum
+        # Equalize momentum
         net_new_momentum = np.sum(np.array([p.get_momentum() for p in new_planets]), axis=0)
         new_momentum = system_momentum - net_new_momentum
         new_velocity = new_momentum/new_mass
         new_position = np.array([(np.random.rand()-0.5)*10*(p1.radius+p2.radius) for _ in range(3)])
         p = cls(name=get_random_name(),
-                              mass=new_mass,
-                              radius=new_radius,
-                              color=get_random_color(),
-                              position_vector=new_position,
-                              velocity_vector=new_velocity)
+                mass=new_mass,
+                radius=new_radius,
+                color=get_random_color(),
+                position_vector=new_position,
+                velocity_vector=new_velocity)
         new_planets.append(p)
         return new_planets
-
 
     @classmethod
     def handle_collision(cls, p1, p2, breakup_mass):
@@ -134,7 +131,8 @@ class Planetesimal():
         ret_str += f"Net: {self.net_force}"
         return ret_str
 
-class Simulator():
+
+class Simulator:
     def __init__(self, planetesimals, sim_step_duration=1, sim_name="None", gravity_constant=1):
         self.planetesimals = planetesimals
         self.sim_name = sim_name
@@ -154,7 +152,8 @@ class Simulator():
     def get_object_closest_to_position(self, position):
         positions = [(p, np.linalg.norm(position-p.position)) for p in self.planetesimals]
         positions.sort(key=lambda pos: pos[1])
-        return positions[0][0] #planet object with smallest distance to point
+        # Planet object with the smallest distance to point
+        return positions[0][0]
 
     def get_distances_between_objects(self):
         return [np.linalg.norm(p1.position - p2.position) for p1, p2 in itertools.combinations(self.planetesimals, 2)]
@@ -235,47 +234,22 @@ class Simulator():
         # print(self)
 
 
-def get_test_sim(g=0.2):
-    def estimate_orbital_speed(gravity_constant, parent, child):
-        return np.sqrt(parent.mass*gravity_constant/Planetesimal.get_distance(parent, child))
+def get_test_sim():
+    config = configuration.Configuration()
+    g = config.get_g()
+    star = config.get_star()
 
-    def set_velocity(planet, new_vector):
-        planet.velocity = new_vector
-
-    def get_orbital_velocity_for_planet(gravity_constant, star, planet):
-        orbital_velocity = estimate_orbital_speed(gravity_constant, star, planet)
-        up = np.array([0,0,1])
+    def get_orbital_velocity_for_planet(planet):
+        orbital_velocity = np.sqrt(star.mass*g/Planetesimal.get_distance(star, planet))
+        up = np.array([0, 0, 1])
         direction = np.cross(Planetesimal.get_distance_vector(star, planet), up)
-        direction = direction/np.linalg.norm(direction)
+        direction = direction / np.linalg.norm(direction)
         return direction*orbital_velocity+star.velocity
 
-    speed=0.2
-    star = Planetesimal("Solus", 200000, radius=400, color="red", position_vector=np.array([0, 0, 0]), velocity_vector=speed*np.array([0, 0, 0]))
-    planet1 = Planetesimal("Marohs", 1000, radius=200, color="yellow", position_vector=np.array([20000, 0, 0]), velocity_vector=speed*np.array([0, -1, 0]))
-    planet2 = Planetesimal("Vunes", 1000, radius=200, color="green", position_vector=np.array([0, 20000, 0]), velocity_vector=speed*np.array([1, 0, 0]))
-    planet3 = Planetesimal("Jorbitar", 4000, radius=200, color="orange", position_vector=np.array([15000, 15000, 0]), velocity_vector=speed*np.array([0.7, -0.5, 0]))
-    planet4 = Planetesimal("Sarnat", 4000, radius=200, color="green", position_vector=np.array([20000, -20000, 0]),
-                           velocity_vector=speed * np.array([0.7, 0.5, 0]))
-    planet5 = Planetesimal("Urunn", 4000, radius=200, color="blue", position_vector=np.array([30000, 0, 0]),
-                           velocity_vector=speed * np.array([1, .5, 0])/2)
-    planet6 = Planetesimal("Nepato", 4000, radius=200, color="cyan", position_vector=np.array([-30000, 0, 0]),
-                           velocity_vector=speed * np.array([0.7, 0, 0]))
-    planet7 = Planetesimal("Plarn", 4000, radius=200, color="grey", position_vector=np.array([45000, 5000, -5000]),
-                           velocity_vector=speed * np.array([0.7, 0, 0]))
-    planet8 = Planetesimal("Chareen", 4000, radius=200, color="white", position_vector=np.array([-45000, -30000,-10000]),
-                           velocity_vector=speed * np.array([0.7, 0, 0]))
-    planet9 = Planetesimal("X-9-FFB", 4000, radius=200, color="violet", position_vector=np.array([-55000, 0, 10000]),
-                           velocity_vector=speed * np.array([0.7, 0, 0]))
-
-    planets = [planet1, planet2, planet3, planet4, planet5, planet6, planet7, planet8, planet9]
-    for p in planets:
-        velocity = get_orbital_velocity_for_planet(g, star, p)
+    planets = [star]
+    for p in config.get_planets():
+        velocity = get_orbital_velocity_for_planet(p)
         p.velocity = velocity
-    planets.append(star)
+        planets.append(p)
 
-    sim = Simulator(planets, gravity_constant=g)
-    return sim
-
-
-if __name__ == "__main__":
-    sim = get_test_sim()
+    return Simulator(planets, gravity_constant=g)

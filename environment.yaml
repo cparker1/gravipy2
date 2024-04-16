@@ -6,3 +6,4 @@ dependencies:
   - python
   - numpy
   - pygame
+  - pyyaml

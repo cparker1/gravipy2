@@ -1,0 +1,65 @@
+simulation:
+  gravitational_constant: 0.2
+  speed_multiplier: 0.2
+  star:
+    name: "Solus"
+    mass: 200000
+    radius: 400
+    color: "red"
+    position: [0, 0, 0]
+    velocity: [0, 0, 0]
+  planets:
+    - name: "Marohs"
+      mass: 1000
+      radius: 200
+      color: "yellow"
+      position: [20000, 0, 0]
+      velocity: [0, -1, 0]
+    - name: "Vunes"
+      mass: 1000
+      radius: 200
+      color: "green"
+      position: [0, 20000, 0]
+      velocity: [1, 0, 0]
+    - name: "Jorbitar"
+      mass: 4000
+      radius: 200
+      color: "orange"
+      position: [15000, 15000, 0]
+      velocity: [0.7, -0.5, 0]
+    - name: "Sarnat"
+      mass: 4000
+      radius: 200
+      color: "green"
+      position: [20000, -20000, 0]
+      velocity: [0.7, 0.5, 0]
+    - name: "Urunn"
+      mass: 4000
+      radius: 200
+      color: "blue"
+      position: [30000, 0, 0]
+      velocity: [0.5, 0.25, 0]
+    - name: "Nepato"
+      mass: 4000
+      radius: 200
+      color: "cyan"
+      position: [-30000, 0, 0]
+      velocity: [0.7, 0, 0]
+    - name: "Plarn"
+      mass: 4000
+      radius: 200
+      color: "grey"
+      position: [45000, 5000, -5000]
+      velocity: [0.7, 0, 0]
+    - name: "Chareen"
+      mass: 4000
+      radius: 200
+      color: "white"
+      position: [-45000, -30000, -10000]
+      velocity: [0.7, 0, 0]
+    - name: "X-9-FFB"
+      mass: 4000
+      radius: 200
+      color: "violet"
+      position: [-55000, 0, 10000]
+      velocity: [0.7, 0, 0]
