@@ -279,8 +279,3 @@ def get_test_sim(g=0.2):
 
 if __name__ == "__main__":
     sim = get_test_sim()
-
-
-
-
-
