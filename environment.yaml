@@ -1,0 +1,8 @@
+name: gravipy2
+channels:
+  - default
+  - conda-forge
+dependencies:
+  - python
+  - numpy
+  - pygame
